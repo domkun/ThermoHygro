@@ -39,6 +39,31 @@ bool shouldProcess(unsigned long currentMillis) {
   return false;
 }
 
+void sendData(float temperature, float humidity, float heatIndex) {
+  // TODO: add debugging library or implement one
+  Serial.print("Temperature: ");
+  Serial.print(temperature);
+  Serial.println(" °C");
+
+  Serial.print("Humidity: ");
+  Serial.print(humidity);
+  Serial.println(" %");
+
+  Serial.print("Heat Index: ");
+  Serial.print(heatIndex);
+  Serial.println(" °C");
+
+  if (Homie.setNodeProperty(temperatureNode, "temperature", String(temperature), true) &&
+      Homie.setNodeProperty(humidityNode, "humidity", String(humidity), true) &&
+      Homie.setNodeProperty(heatIndexNode, "heat-index", String(heatIndex), true)) {
+    errorOccured = false;
+    lastDataSent = millis();
+  } else {
+    errorOccured = true;
+    Serial.println("Sending data failed");
+  }
+}
+
 void setupHandler() {
   // setup the unit for each node
   Homie.setNodeProperty(temperatureNode, "unit", "°C", true);
@@ -53,34 +78,17 @@ void loopHandler() {
   if (shouldProcess(millis())) {
     float temperature = dht.readTemperature();
     float humidity = dht.readHumidity();
-    float heatIndex = dht.computeHeatIndex(temperature, humidity, false);
 
     // save the time when data was read as the DHT22 needs at least a 2 seconds
     // delay between reads
     lastDataRead = millis();
+    bool readOk = !isnan(temperature) && !isnan(humidity);
 
-    // TODO: add debugging library or implement one
-    Serial.print("Temperature: ");
-    Serial.print(temperature);
-    Serial.println(" °C");
-
-    Serial.print("Humidity: ");
-    Serial.print(humidity);
-    Serial.println(" %");
-
-    Serial.print("Heat Index: ");
-    Serial.print(heatIndex);
-    Serial.println(" °C");
-
-    if (Homie.setNodeProperty(temperatureNode, "temperature", String(temperature), true) &&
-        Homie.setNodeProperty(humidityNode, "humidity", String(humidity), true) &&
-        Homie.setNodeProperty(heatIndexNode, "heat-index", String(heatIndex), true)) {
-      errorOccured = false;
-      lastDataSent = millis();
-    } else {
-      errorOccured = true;
-      Serial.println("Sending data failed");
+    if (readOk) {
+      float heatIndex = dht.computeHeatIndex(temperature, humidity, false);
+      sendData(temperature, humidity, heatIndex);
     }
+
   }
 }
 
