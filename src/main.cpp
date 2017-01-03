@@ -28,10 +28,17 @@ bool shouldProcess(unsigned long currentMillis) {
   unsigned long lastRead = currentMillis - lastDataRead;
   if (errorOccured) {
     if (lastRead >= ERROR_DELAY_MILLIS) {
+      Serial.print("Triggering processing of data, cause: ERROR, ");
+      Serial.println(lastRead);
       return true;
     }
   } else {
     if (lastSent >= DATA_INTERVAL_MILLIS || lastDataSent == 0) {
+      Serial.print("Triggering processing of data, cause: INTERVAL");
+      Serial.print(", lastSent: ");
+      Serial.print(lastSent);
+      Serial.print(", lastDataSent: ");
+      Serial.println(lastDataSent);
       return true;
     }
   }
@@ -85,8 +92,12 @@ void loopHandler() {
     bool readOk = !isnan(temperature) && !isnan(humidity);
 
     if (readOk) {
+      Serial.println("Succesful read data from sensor");
       float heatIndex = dht.computeHeatIndex(temperature, humidity, false);
       sendData(temperature, humidity, heatIndex);
+    } else {
+      errorOccured = true;
+      Serial.println("Error occured while reading data from sensor");
     }
 
   }
