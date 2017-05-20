@@ -3,8 +3,9 @@
 #include <Homie.h>
 
 #define DHTPIN D2     // what digital pin we're connected to
-
 #define DHTTYPE DHT22   // DHT 22  (AM2302), AM2321
+
+#define NIGHTLIGHTPIN1 D6
 
 DHT dht(DHTPIN, DHTTYPE);
 
@@ -22,6 +23,8 @@ HomieNode temperatureNode("temperature", "temperature");
 HomieNode humidityNode("humidity", "humidity");
 
 HomieNode heatIndexNode("heat-index", "heat-index");
+
+HomieNode nightLightNode("light", "switch");
 
 bool shouldProcess(unsigned long currentMillis) {
   unsigned long lastSent = currentMillis - lastDataSent;
@@ -77,8 +80,26 @@ void setupHandler() {
   Homie.setNodeProperty(humidityNode, "unit", "%", true);
   Homie.setNodeProperty(heatIndexNode, "unit", "°C", true);
 
+  Homie.setNodeProperty(nightLightNode, "on", "false");
+
   // start sensor
   dht.begin();
+}
+
+bool lightOnHandler(String value) {
+  if (value == "true") {
+    digitalWrite(NIGHTLIGHTPIN1, HIGH);
+    Homie.setNodeProperty(nightLightNode, "on", "true"); // Update the state of the light
+    Serial.println("Light is on");
+  } else if (value == "false") {
+    digitalWrite(NIGHTLIGHTPIN1, LOW);
+    Homie.setNodeProperty(nightLightNode, "on", "false");
+    Serial.println("Light is off");
+  } else {
+    return false;
+  }
+
+  return true;
 }
 
 void loopHandler() {
@@ -99,17 +120,28 @@ void loopHandler() {
       errorOccured = true;
       Serial.println("Error occured while reading data from sensor");
     }
-
   }
 }
 
 void setup() {
+  // setup night light pin
+  pinMode(NIGHTLIGHTPIN1, OUTPUT);
+  digitalWrite(NIGHTLIGHTPIN1, LOW);
+
   Homie.setFirmware("thermo-hygro", "0.1.0");
+  Homie.enableBuiltInLedIndicator(false);
+
+  nightLightNode.subscribe("on", lightOnHandler);
+
   Homie.registerNode(temperatureNode);
   Homie.registerNode(humidityNode);
   Homie.registerNode(heatIndexNode);
+
+  Homie.registerNode(nightLightNode);
+
   Homie.setSetupFunction(setupHandler);
   Homie.setLoopFunction(loopHandler);
+
   Homie.setup();
 }
 
