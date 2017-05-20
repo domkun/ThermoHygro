@@ -18,6 +18,10 @@ unsigned long lastDataRead = 0;
 
 bool errorOccured = false;
 
+int brightness = 0;
+
+bool lightOn = false;
+
 HomieNode temperatureNode("temperature", "temperature");
 
 HomieNode humidityNode("humidity", "humidity");
@@ -88,15 +92,28 @@ void setupHandler() {
 
 bool lightOnHandler(String value) {
   if (value == "true") {
-    digitalWrite(NIGHTLIGHTPIN1, HIGH);
+    analogWrite(NIGHTLIGHTPIN1, brightness);
+    lightOn = true;
     Homie.setNodeProperty(nightLightNode, "on", "true"); // Update the state of the light
     Serial.println("Light is on");
   } else if (value == "false") {
     digitalWrite(NIGHTLIGHTPIN1, LOW);
+    analogWrite(NIGHTLIGHTPIN1, 0);
     Homie.setNodeProperty(nightLightNode, "on", "false");
     Serial.println("Light is off");
   } else {
     return false;
+  }
+
+  return true;
+}
+
+bool brightnessHandler(String value) {
+  brightness = value.toInt();
+  Homie.setNodeProperty(nightLightNode, "brightness", value);
+
+  if (lightOn) {
+    analogWrite(NIGHTLIGHTPIN1, brightness);
   }
 
   return true;
@@ -126,12 +143,13 @@ void loopHandler() {
 void setup() {
   // setup night light pin
   pinMode(NIGHTLIGHTPIN1, OUTPUT);
-  digitalWrite(NIGHTLIGHTPIN1, LOW);
+  analogWrite(NIGHTLIGHTPIN1, 0);
 
   Homie.setFirmware("thermo-hygro", "0.1.0");
   Homie.enableBuiltInLedIndicator(false);
 
   nightLightNode.subscribe("on", lightOnHandler);
+  nightLightNode.subscribe("brightness", brightnessHandler);
 
   Homie.registerNode(temperatureNode);
   Homie.registerNode(humidityNode);
